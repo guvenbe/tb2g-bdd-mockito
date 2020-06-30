@@ -16,7 +16,7 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.BDDMockito.given;
-import static org.mockito.Mockito.inOrder;
+import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class OwnerControllerTest {
@@ -24,7 +24,7 @@ class OwnerControllerTest {
     private static final String OWNERS_CREATE_OR_UPDATE_OWNER_FORM = "owners/createOrUpdateOwnerForm";
     private static final String REDIRECT_OWNERS_5 = "redirect:/owners/5";
 
-    @Mock
+    @Mock(lenient = true)
     OwnerService ownerService;
 
     @Mock
@@ -43,23 +43,23 @@ class OwnerControllerTest {
     void setUp() {
         given(ownerService.findAllByLastNameLike(stringArgumentCaptor.capture()))
                 .willAnswer(invocation -> {
-            List<Owner> owners = new ArrayList<>();
+                    List<Owner> owners = new ArrayList<>();
 
-            String name = invocation.getArgument(0);
+                    String name = invocation.getArgument(0);
 
-            if (name.equals("%Buck%")) {
-                owners.add(new Owner(1l, "Joe", "Buck"));
-                return owners;
-            } else if (name.equals("%DontFindMe%")) {
-                return owners;
-            } else if (name.equals("%FindMe%")) {
-                owners.add(new Owner(1l, "Joe", "Buck"));
-                owners.add(new Owner(2l, "Joe2", "Buck2"));
-                return owners;
-            }
+                    if (name.equals("%Buck%")) {
+                        owners.add(new Owner(1l, "Joe", "Buck"));
+                        return owners;
+                    } else if (name.equals("%DontFindMe%")) {
+                        return owners;
+                    } else if (name.equals("%FindMe%")) {
+                        owners.add(new Owner(1l, "Joe", "Buck"));
+                        owners.add(new Owner(2l, "Joe2", "Buck2"));
+                        return owners;
+                    }
 
-            throw new RuntimeException("Invalid Argument");
-        });
+                    throw new RuntimeException("Invalid Argument");
+                });
     }
 
     @Test
@@ -77,7 +77,8 @@ class OwnerControllerTest {
 
         // inorder asserts
         inOrder.verify(ownerService).findAllByLastNameLike(anyString());
-        inOrder.verify(model).addAttribute(anyString(), anyList());
+        inOrder.verify(model, times(1)).addAttribute(anyString(), anyList());
+        verifyNoMoreInteractions(model);
     }
 
     @Test
@@ -86,11 +87,12 @@ class OwnerControllerTest {
         Owner owner = new Owner(1l, "Joe", "Buck");
 
         //when
-        String viewName = controller.processFindForm(owner, bindingResult, null);
+        String viewName = controller.processFindForm(owner, bindingResult, model);
 
         //then
         assertThat("%Buck%").isEqualToIgnoringCase(stringArgumentCaptor.getValue());
         assertThat("redirect:/owners/1").isEqualToIgnoringCase(viewName);
+        verifyZeroInteractions(model);
     }
 
 
@@ -100,11 +102,13 @@ class OwnerControllerTest {
         Owner owner = new Owner(1l, "Joe", "DontFindMe");
 
         //when
-        String viewName = controller.processFindForm(owner, bindingResult, null);
+        String viewName = controller.processFindForm(owner, bindingResult, model);
 
         //then
+        //verifyNoMoreInteractions(ownerService);
         assertThat("%DontFindMe%").isEqualToIgnoringCase(stringArgumentCaptor.getValue());
         assertThat("owners/findOwners").isEqualToIgnoringCase(viewName);
+        verifyZeroInteractions(model);
     }
 
     @Test
